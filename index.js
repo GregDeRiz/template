@@ -2,20 +2,19 @@ import fs from 'fs';
 import puppeteer from 'puppeteer';
 
 (async () => {
-    const browser = await puppeteer.launch({
-        headless: true,
-        userDataDir: './data',
-    });
+    const browser = await puppeteer.launch({ headless: true, userDataDir: './data' });
     const page = await browser.newPage();
-    await page.goto('https://www.vinted.fr/catalog?time=1742556067&catalog[]=1842&disabled_personalization=true&page=1&size_ids[]=4&color_ids[]=1&search_text=coupe%20%C3%A9vas%C3%A9', { waitUntil: 'networkidle2' });
+
+    const userSearch = "jean femme taille 38 taille haute coupe évasée noire";
+    await page.goto('https://www.vinted.fr/catalog?search_text=' + userSearch, { waitUntil: 'networkidle2' });
     await page.waitForSelector('.feed-grid');
 
     const articles = await page.$$('.feed-grid > .feed-grid__item');
     let items = [];
     for (const article of articles) {
-        let index = articles.indexOf(article);
         if (items.length >= 10) break;
 
+        let index = articles.indexOf(article);
         let title = "Null";
         let price = "Null";
         let link = "Null";
@@ -31,8 +30,8 @@ import puppeteer from 'puppeteer';
         price = price.replace(',', '.');
         if (!link.includes("member") && title !== "Null" || price !== "Null") items.push({ title, price, link });
     }
+    if (fs.existsSync('result.csv')) fs.unlinkSync('result.csv');
 
-    fs.unlinkSync('result.csv');
     for (const item of items) {
         fs.appendFile(
             'result.csv',
@@ -41,7 +40,6 @@ import puppeteer from 'puppeteer';
             (err) => { if (err) throw err; }
         );
     }
-
     console.log("Done! Saved " + items.length + " articles into result.csv");
     await browser.close();
 })();
