@@ -1,6 +1,26 @@
 import fs from 'fs';
 import puppeteer from 'puppeteer';
 
+async function loginToVinted(page, email, password) {
+    await page.goto('https://www.vinted.fr/member/signup/select_type?ref_url=');
+
+    const authButton = await page.$('span[data-testid="auth-select-type--register-switch"]');
+    if (authButton) { await authButton.click(); }
+
+    const loginButton = await page.waitForSelector('span[data-testid="auth-select-type--login-email"]');
+    await loginButton.click();
+
+    await page.waitForSelector('#username');
+    const emailField = await page.$('#username');
+    const passwordField = await page.$('#password');
+
+    await emailField.type(email);
+    await passwordField.type(password);
+
+    const submitButton = await page.$('button[type="submit"]');
+    await submitButton.click();
+}
+
 async function storing(article, message) {
     let option = "Null";
     try { option = article }
@@ -39,9 +59,27 @@ async function storeItemsInFile(items) {
     }
 }
 
-(async () => {
-    const browser = await puppeteer.launch({ headless: true, userDataDir: './data' });
+async function sendMessage(page, link, message) {
+    await page.goto(link);
+    await page.waitForNavigation();
+
+    const messageButton = await page.waitForSelector('button[data-testid="ask-seller-button"]');
+    messageButton.click();
+
+    const textArea = await page.waitForSelector('#composerInput');
+    await textArea.type(message);
+    await page.keyboard.press('Enter');
+}
+
+async function searchForArticle() {
+    const browser = await puppeteer.launch({
+        headless: false,
+        userDataDir: './data',
+        defaultViewport: null
+    });
     const page = await browser.newPage();
+    await loginToVinted(page, "", "");
+    await page.waitForNavigation();
 
     const userSearch = "jean femme taille haute coupe évasée";
     const options = {"color": 1, "size": 4};
@@ -60,5 +98,13 @@ async function storeItemsInFile(items) {
 
     await storeItemsInFile(items);
     console.log("Done! Saved " + items.length + " articles into result.csv");
+
+    await sendMessage(page, "https://www.vinted.fr/items/6042875807-t-shirt-vert", "");
+    const profileButton = await page.waitForSelector('#user-menu-button');
+    await profileButton.click();
+    const logoutButton = await page.waitForSelector('button.nav-link');
+    await logoutButton.click();
     await browser.close();
-})();
+}
+
+await searchForArticle();
